@@ -3,7 +3,7 @@ import Foundation
 
 public struct Image: Sendable, Transferable {
     
-    let remoteURL: URL
+    public let remoteURL: URL
     
     public static var transferRepresentation: some TransferRepresentation {
         ProxyRepresentation(exporting: \.remoteURL)
