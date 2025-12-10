@@ -32,6 +32,9 @@ public struct MetadataProvider: Sendable {
 
     @discardableResult
     public func metadata(for url: URL) async throws -> LinkMetadata {
+        // Validate URL before processing
+        try validateURL(url)
+        
         // Use modern URLRequest builder
         let request = URLRequest.metadataRequest(url: url, timeout: timeout)
         return try await metadata(for: request)
@@ -47,6 +50,9 @@ public struct MetadataProvider: Sendable {
         guard let originalURL = request.url else {
             throw Error(errorCode: .metadataFetchFailed)
         }
+        
+        // Validate URL before processing
+        try validateURL(originalURL)
         
         // Use async/await pattern with proper error handling
         do {
@@ -72,5 +78,25 @@ public struct MetadataProvider: Sendable {
     /// If a request takes longer than this timeout, it will fail with a timeout error.
     /// Default is 30 seconds.
     public var timeout: TimeInterval = 30
+    
+    // MARK: - Private Methods
+    
+    /// Validates URL for metadata fetching
+    /// 
+    /// Ensures URL has proper scheme (http/https) and host component.
+    /// Throws invalidURL error for malformed or unsupported URLs.
+    private func validateURL(_ url: URL) throws {
+        // Check for valid scheme
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            throw Error.invalidURL()
+        }
+        
+        // Check for valid host
+        guard url.host != nil, 
+              !url.host!.isEmpty else {
+            throw Error.invalidURL()
+        }
+    }
 }
 
