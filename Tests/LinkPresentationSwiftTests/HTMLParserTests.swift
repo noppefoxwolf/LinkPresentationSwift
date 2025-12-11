@@ -100,11 +100,8 @@ struct HTMLParserTests {
         
         let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
         
-        #expect(metadata.imageProvider != nil)
-        
-        if let imageProvider = metadata.imageProvider as? ImageProvider {
-            #expect(imageProvider.url == URL(string: "https://example.com/image.jpg"))
-        }
+        #expect(metadata.imageURL != nil)
+        #expect(metadata.imageURL == URL(string: "https://example.com/image.jpg"))
     }
     
     @Test("Parse Twitter image")
@@ -123,11 +120,8 @@ struct HTMLParserTests {
         
         let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
         
-        #expect(metadata.imageProvider != nil)
-        
-        if let imageProvider = metadata.imageProvider as? ImageProvider {
-            #expect(imageProvider.url == URL(string: "https://example.com/twitter-image.png"))
-        }
+        #expect(metadata.imageURL != nil)
+        #expect(metadata.imageURL == URL(string: "https://example.com/twitter-image.png"))
     }
     
     @Test("Parse complete metadata with multiple tags")
@@ -150,11 +144,8 @@ struct HTMLParserTests {
         let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
         
         #expect(metadata.title == "Complete Example")
-        #expect(metadata.imageProvider != nil)
-        
-        if let imageProvider = metadata.imageProvider as? ImageProvider {
-            #expect(imageProvider.url == URL(string: "https://example.com/og-image.jpg"))
-        }
+        #expect(metadata.imageURL != nil)
+        #expect(metadata.imageURL == URL(string: "https://example.com/og-image.jpg"))
     }
     
     @Test("Parse HTML with no metadata")
@@ -173,7 +164,7 @@ struct HTMLParserTests {
         let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
         
         #expect(metadata.title == nil)
-        #expect(metadata.imageProvider == nil)
+        #expect(metadata.imageURL == nil)
         #expect(metadata.originalURL == URL(string: "https://example.com"))
     }
     

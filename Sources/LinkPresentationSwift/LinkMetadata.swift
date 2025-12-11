@@ -1,43 +1,47 @@
 import Foundation
 import CoreTransferable
+import UniformTypeIdentifiers
 
-public struct LinkMetadata: Sendable {
+public struct LinkMetadata: Sendable, Codable {
     public init(
-        url: URL? = nil,
         originalURL: URL? = nil,
+        url: URL? = nil,
         title: String? = nil,
-        iconProvider: (any Transferable)? = nil,
-        imageProvider: (any Transferable)? = nil,
-        remoteVideoURL: URL? = nil,
-        videoProvider: (any Transferable)? = nil
+        iconURL: URL? = nil,
+        imageURL: URL? = nil,
+        remoteVideoURL: URL? = nil
     ) {
-        self.url = url
         self.originalURL = originalURL
+        self.url = url
         self.title = title
-        self.iconProvider = iconProvider
-        self.imageProvider = imageProvider
+        self.iconURL = iconURL
+        self.imageURL = imageURL
         self.remoteVideoURL = remoteVideoURL
-        self.videoProvider = videoProvider
     }
-    
-    // The URL that returned the metadata, taking server-side redirects into account.
-    public var url: URL?
     
     // The original URL of the metadata request.
     public var originalURL: URL?
     
+    // The URL that returned the metadata, taking server-side redirects into account.
+    public var url: URL?
+    
     // A representative title for the URL.
     public var title: String?
     
-    // An object that retrieves data corresponding to a representative icon for the URL.
-    public var iconProvider: (any Transferable)?
+    // A remote URL corresponding to a representative icon for the URL.
+    public var iconURL: URL?
     
-    // An object that retrieves data corresponding to a representative image for the URL.
-    public var imageProvider: (any Transferable)?
+    // A remote URL corresponding to a representative image for the URL.
+    public var imageURL: URL?
     
     // A remote URL corresponding to a representative video for the URL.
     public var remoteVideoURL: URL?
-    
-    // An object that retrieves data corresponding to a representative video for the URL.
-    public var videoProvider: (any Transferable)?
+}
+
+extension UTType {
+    static var linkMetadata: UTType { UTType(exportedAs: "dev.noppe.linkmetadata") }
+}
+
+enum LinkMetadataError: Swift.Error {
+    case noImageURL
 }

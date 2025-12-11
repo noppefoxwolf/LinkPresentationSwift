@@ -9,26 +9,25 @@ struct LinkMetadataTests {
     func initializationWithAllParameters() async throws {
         let url = URL(string: "https://example.com")
         let originalURL = URL(string: "https://original.com")
-        let imageProvider = ImageProvider(url: URL(string: "https://example.com/image.jpg")!)
+        let iconURL = URL(string: "https://example.com/icon.ico")
+        let imageURL = URL(string: "https://example.com/image.jpg")
         let remoteVideoURL = URL(string: "https://example.com/video.mp4")
         
         let metadata = LinkMetadata(
             url: url,
             originalURL: originalURL,
             title: "Test Title",
-            iconProvider: imageProvider,
-            imageProvider: imageProvider,
-            remoteVideoURL: remoteVideoURL,
-            videoProvider: imageProvider
+            iconURL: iconURL,
+            imageURL: imageURL,
+            remoteVideoURL: remoteVideoURL
         )
         
         #expect(metadata.url == url)
         #expect(metadata.originalURL == originalURL)
         #expect(metadata.title == "Test Title")
-        #expect(metadata.iconProvider != nil)
-        #expect(metadata.imageProvider != nil)
+        #expect(metadata.iconURL == iconURL)
+        #expect(metadata.imageURL == imageURL)
         #expect(metadata.remoteVideoURL == remoteVideoURL)
-        #expect(metadata.videoProvider != nil)
     }
     
     @Test("LinkMetadata default initialization")
@@ -38,10 +37,9 @@ struct LinkMetadataTests {
         #expect(metadata.url == nil)
         #expect(metadata.originalURL == nil)
         #expect(metadata.title == nil)
-        #expect(metadata.iconProvider == nil)
-        #expect(metadata.imageProvider == nil)
+        #expect(metadata.iconURL == nil)
+        #expect(metadata.imageURL == nil)
         #expect(metadata.remoteVideoURL == nil)
-        #expect(metadata.videoProvider == nil)
     }
     
     @Test("LinkMetadata properties are mutable")
@@ -55,8 +53,8 @@ struct LinkMetadataTests {
         metadata.title = "New Title"
         #expect(metadata.title == "New Title")
         
-        let imageProvider = ImageProvider(url: URL(string: "https://example.com/image.jpg")!)
-        metadata.imageProvider = imageProvider
-        #expect(metadata.imageProvider != nil)
+        let imageURL = URL(string: "https://example.com/image.jpg")
+        metadata.imageURL = imageURL
+        #expect(metadata.imageURL == imageURL)
     }
 }

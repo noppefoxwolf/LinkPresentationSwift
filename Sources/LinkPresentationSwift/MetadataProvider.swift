@@ -62,15 +62,11 @@ public struct MetadataProvider: Sendable {
             metadata.originalURL = originalURL
             metadata.url = finalURL
             
-            return await parser.parseHTMLMetadata(html: html, baseMetadata: metadata, shouldFetchSubresources: shouldFetchSubresources)
+            return await parser.parseHTMLMetadata(html: html, baseMetadata: metadata)
         } catch {
             throw error
         }
     }
-    
-
-    //    The default value is true.
-    public var shouldFetchSubresources: Bool = true
     
     /// The timeout interval for network requests in seconds.
     ///

@@ -9,7 +9,7 @@ internal protocol HTMLParserProtocol: Sendable {
     ///   - baseMetadata: Existing metadata to merge with (contains URLs)
     ///   - shouldFetchSubresources: Whether to download images and other subresources
     /// - Returns: Updated LinkMetadata with extracted information
-    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata, shouldFetchSubresources: Bool) async -> LinkMetadata
+    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata) async -> LinkMetadata
 }
 
 /// Modern HTML parser using Swift Regex and functional programming patterns.
@@ -23,14 +23,16 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
     /// Uses functional programming approach with separate extraction methods
     /// for different types of metadata (title, meta tags). Optionally downloads
     /// subresources like images based on shouldFetchSubresources parameter.
-    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata, shouldFetchSubresources: Bool) async -> LinkMetadata {
+    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata) async -> LinkMetadata {
         var metadata = baseMetadata
         
-        // Extract page title using Swift Regex with named captures
-        metadata.title = extractTitle(from: html)
+        // First extract meta tags (which have higher priority)
+        await extractMetaTags(from: html, into: &metadata)
         
-        // Process meta tags using functional transformation pipeline
-        await extractMetaTags(from: html, into: &metadata, shouldFetchSubresources: shouldFetchSubresources)
+        // Then extract title from HTML as fallback if no OG/Twitter title was found
+        if metadata.title == nil {
+            metadata.title = extractTitle(from: html)
+        }
         
         return metadata
     }
@@ -51,17 +53,33 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
         return title.isEmpty ? nil : title
     }
     
-    /// Processes meta tags using functional programming patterns.
+    /// Processes meta tags and link tags using functional programming patterns.
     ///
     /// Transforms raw regex matches into structured MetaTag objects,
     /// then applies type-safe processing for each metadata type.
     /// Downloads images if shouldFetchSubresources is enabled.
-    private func extractMetaTags(from html: String, into metadata: inout LinkMetadata, shouldFetchSubresources: Bool) async {
+    private func extractMetaTags(from html: String, into metadata: inout LinkMetadata) async {
         let metaRegex = /<meta[^>]*(?:property=["'](?<property>[^"']*)["']|name=["'](?<name>[^"']*)["'])[^>]*content=["'](?<content>[^"']*)["'][^>]*>/
         
         for match in html.matches(of: metaRegex) {
             guard let metaTag = MetaTag(match) else { continue }
-            await processMetaTag(metaTag, into: &metadata, shouldFetchSubresources: shouldFetchSubresources)
+            await processMetaTag(metaTag, into: &metadata)
+        }
+        
+        // Extract link tags for favicon/icon
+        let linkRegex = /<link[^>]*rel=["'](?<rel>[^"']*)["'][^>]*href=["'](?<href>[^"']*)["'][^>]*>/
+        
+        for match in html.matches(of: linkRegex) {
+            let rel = String(match.output.rel)
+            let href = String(match.output.href)
+            
+            guard (rel == "icon" || rel == "shortcut icon" || rel == "apple-touch-icon"),
+                  metadata.iconURL == nil else { continue }
+            
+            if let iconURL = URL(string: href) {
+                metadata.iconURL = iconURL
+                break // First icon wins
+            }
         }
     }
     
@@ -70,176 +88,34 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
     /// Uses enum pattern matching for type-safe metadata assignment,
     /// prioritizing Open Graph and Twitter Card data over standard meta tags.
     /// Downloads image/video data if shouldFetchSubresources is enabled.
-    private func processMetaTag(_ metaTag: MetaTag, into metadata: inout LinkMetadata, shouldFetchSubresources: Bool) async {
+    private func processMetaTag(_ metaTag: MetaTag, into metadata: inout LinkMetadata) async {
         switch metaTag.type {
         case .title:
-            if !metaTag.content.isEmpty && metadata.title == nil {
-                metadata.title = metaTag.content // OG/Twitter titles override HTML title - first wins
+            if !metaTag.content.isEmpty {
+                metadata.title = metaTag.content // OG/Twitter titles take priority over HTML title
             }
         case .image:
             guard let imageURL = URL(string: metaTag.content),
-                  metadata.imageProvider == nil else { break } // First image wins
+                  metadata.imageURL == nil else { break } // First image wins
             
-            if shouldFetchSubresources {
-                // Pre-fetch image data for immediate availability
-                do {
-                    let imageData = try await downloadImageSecurely(from: imageURL)
-                    metadata.imageProvider = ImageProvider(url: imageURL, data: imageData)
-                } catch {
-                    // Fallback to URL-only provider if download fails
-                    metadata.imageProvider = ImageProvider(url: imageURL)
-                }
-            } else {
-                // URL reference only - no download
-                metadata.imageProvider = ImageProvider(url: imageURL)
-            }
+            metadata.imageURL = imageURL
         case .video:
             guard let videoURL = URL(string: metaTag.content), 
-                  metadata.videoProvider == nil else { break } // First video wins
+                  metadata.remoteVideoURL == nil else { break } // First video wins
             
-            if shouldFetchSubresources {
-                // Pre-fetch video data for immediate availability
-                do {
-                    let videoData = try await downloadVideoSecurely(from: videoURL)
-                    metadata.videoProvider = VideoProvider(url: videoURL, data: videoData)
-                } catch {
-                    // Fallback to URL-only provider if download fails
-                    metadata.videoProvider = VideoProvider(url: videoURL)
-                }
-            } else {
-                // URL reference only - no download
-                metadata.videoProvider = VideoProvider(url: videoURL)
-            }
+            metadata.remoteVideoURL = videoURL
         case .remoteVideoURL:
             guard let videoURL = URL(string: metaTag.content),
                   metadata.remoteVideoURL == nil else { break } // First remoteVideoURL wins
             metadata.remoteVideoURL = videoURL
+        case .icon:
+            guard let iconURL = URL(string: metaTag.content),
+                  metadata.iconURL == nil else { break } // First icon wins
+            metadata.iconURL = iconURL
         case .description:
             // Future enhancement: could extend LinkMetadata to include description
             break
         }
-    }
-    
-    /// Downloads image data with security validation.
-    ///
-    /// Applies same security constraints as ImageProvider but integrated
-    /// into the parsing process for efficient batch downloading.
-    private func downloadImageSecurely(from url: URL) async throws -> Data {
-        // Security: Only allow HTTPS URLs
-        guard url.scheme == "https" else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Configure secure request
-        var request = URLRequest(url: url)
-        request.setValue("Mozilla/5.0 (compatible; LinkPresentationSwift)", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 15  // Shorter timeout for subresource downloads
-        request.cachePolicy = .returnCacheDataElseLoad
-        
-        let session = URLSession.shared
-        let (data, response) = try await session.data(for: request)
-        
-        // Validate HTTP response
-        guard let httpResponse = response as? HTTPURLResponse,
-              200...299 ~= httpResponse.statusCode else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Validate image size (max 5MB for metadata parsing)
-        guard data.count <= 5_000_000 else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Basic image validation
-        guard isValidImageData(data) else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        return data
-    }
-    
-    /// Validates image file signatures for security.
-    private func isValidImageData(_ data: Data) -> Bool {
-        guard data.count >= 8 else { return false }
-        
-        let header = data.prefix(8)
-        
-        // Check for common image file signatures
-        if header.starts(with: [0xFF, 0xD8, 0xFF]) { return true }  // JPEG
-        if header.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) { return true }  // PNG
-        if header.starts(with: [0x47, 0x49, 0x46, 0x38]) { return true }  // GIF
-        if header.starts(with: [0x52, 0x49, 0x46, 0x46]) && data.count > 12 { // WebP
-            let webpHeader = data[8..<12]
-            if webpHeader.starts(with: [0x57, 0x45, 0x42, 0x50]) { return true }
-        }
-        
-        return false
-    }
-    
-    /// Downloads video data with security validation.
-    ///
-    /// Similar to image downloading but with video-specific validation
-    /// and appropriate size limits for video content.
-    private func downloadVideoSecurely(from url: URL) async throws -> Data {
-        // Security: Only allow HTTPS URLs
-        guard url.scheme == "https" else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Configure secure request
-        var request = URLRequest(url: url)
-        request.setValue("Mozilla/5.0 (compatible; LinkPresentationSwift)", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 30  // Longer timeout for video downloads
-        request.cachePolicy = .returnCacheDataElseLoad
-        
-        let session = URLSession.shared
-        let (data, response) = try await session.data(for: request)
-        
-        // Validate HTTP response
-        guard let httpResponse = response as? HTTPURLResponse,
-              200...299 ~= httpResponse.statusCode else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Validate video size (max 20MB for metadata parsing)
-        guard data.count <= 20_000_000 else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        // Basic video validation
-        guard isValidVideoData(data) else {
-            throw Error(errorCode: .metadataFetchFailed)
-        }
-        
-        return data
-    }
-    
-    /// Validates video file signatures for security.
-    ///
-    /// Checks common video format signatures to prevent processing
-    /// of non-video content as video data.
-    private func isValidVideoData(_ data: Data) -> Bool {
-        guard data.count >= 12 else { return false }
-        
-        let header = Array(data.prefix(12))
-        
-        // MP4 (ftyp box)
-        if header[4...7] == [0x66, 0x74, 0x79, 0x70] {
-            return true
-        }
-        
-        // WebM (EBML header)
-        if header.starts(with: [0x1A, 0x45, 0xDF, 0xA3]) {
-            return true
-        }
-        
-        // AVI (RIFF...AVI)
-        if header.starts(with: [0x52, 0x49, 0x46, 0x46]) && 
-           header[8...11] == [0x41, 0x56, 0x49, 0x20] {
-            return true
-        }
-        
-        return false
     }
 }
 
@@ -279,6 +155,7 @@ private enum MetaTagType {
     case description // Page description (og:description, description, twitter:description)
     case video       // Video content (og:video, twitter:player)
     case remoteVideoURL // Direct video URL (og:video:url, twitter:player:stream)
+    case icon        // Page icon (og:icon, apple-touch-icon, icon)
     
     /// Maps meta tag property/name attributes to semantic types.
     ///
@@ -296,6 +173,8 @@ private enum MetaTagType {
             return .video
         case ("og:video:url", _), ("og:video:secure_url", _), (_, "twitter:player:stream"):
             return .remoteVideoURL
+        case ("og:icon", _), (_, "apple-touch-icon"):
+            return .icon
         default:
             return nil // Unsupported meta tag type
         }

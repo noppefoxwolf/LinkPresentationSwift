@@ -5,7 +5,7 @@ import Foundation
 @Suite("shouldFetchSubresources Feature Tests")
 struct ShouldFetchSubresourcesTests {
     
-    @Test("shouldFetchSubresources = true should create ImageProvider with data")
+    @Test("shouldFetchSubresources = true should extract image URLs")
     func shouldFetchSubresourcesTrue() async throws {
         let mockFetcher = MockMetadataFetcher()
         let parser = HTMLParser() // Use real parser to test actual functionality
@@ -27,14 +27,11 @@ struct ShouldFetchSubresourcesTests {
         
         let metadata = try await provider.metadata(for: URL(string: "https://example.com")!)
         
-        // Should have ImageProvider (though image download might fail in test environment)
-        #expect(metadata.imageProvider != nil)
-        if let provider = metadata.imageProvider as? ImageProvider {
-            #expect(provider.url.absoluteString == "https://example.com/image.png")
-        }
+        // Should have imageURL
+        #expect(metadata.imageURL?.absoluteString == "https://example.com/image.png")
     }
     
-    @Test("shouldFetchSubresources = false should create ImageProvider without data")
+    @Test("shouldFetchSubresources = false should extract image URLs")
     func shouldFetchSubresourcesFalse() async throws {
         let mockFetcher = MockMetadataFetcher()
         let parser = HTMLParser() // Use real parser to test actual functionality
@@ -56,33 +53,31 @@ struct ShouldFetchSubresourcesTests {
         
         let metadata = try await provider.metadata(for: URL(string: "https://example.com")!)
         
-        // Should have ImageProvider with URL only
-        #expect(metadata.imageProvider != nil)
-        if let provider = metadata.imageProvider as? ImageProvider {
-            #expect(provider.url.absoluteString == "https://example.com/image.png")
-        }
+        // Should have imageURL
+        #expect(metadata.imageURL?.absoluteString == "https://example.com/image.png")
     }
     
-    @Test("ImageProvider can load image data when pre-fetched")
-    func imageProviderLoadImageData() async throws {
-        let url = URL(string: "https://example.com/image.png")!
-        let testData = Data([0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+    @Test("Extract icon URLs from link tags")
+    func extractIconFromLinkTags() async throws {
+        let mockFetcher = MockMetadataFetcher()
+        let parser = HTMLParser()
         
-        // Test ImageProvider with pre-fetched data
-        let provider = ImageProvider(url: url, data: testData)
+        let htmlWithIcon = """
+        <html>
+        <head>
+            <link rel="icon" href="https://example.com/favicon.ico">
+            <title>Test Page</title>
+        </head>
+        </html>
+        """
         
-        let loadedData = try await provider.loadImageData()
-        #expect(loadedData == testData)
-    }
-    
-    @Test("ImageProvider validates HTTPS URLs only")
-    func imageProviderValidatesHTTPS() async throws {
-        let httpURL = URL(string: "http://example.com/image.png")!
-        let provider = ImageProvider(url: httpURL)
+        mockFetcher.htmlToReturn = htmlWithIcon
+        mockFetcher.urlToReturn = URL(string: "https://example.com")
         
-        // Should fail for HTTP URLs
-        await #expect(throws: LinkPresentationSwift.Error.self) {
-            try await provider.loadImageData()
-        }
+        let provider = MetadataProvider(fetcher: mockFetcher, parser: parser)
+        
+        let metadata = try await provider.metadata(for: URL(string: "https://example.com")!)
+        
+        #expect(metadata.iconURL?.absoluteString == "https://example.com/favicon.ico")
     }
 }

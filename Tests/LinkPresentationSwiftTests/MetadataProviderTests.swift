@@ -21,7 +21,7 @@ final class MockMetadataFetcher: MetadataFetcherProtocol, @unchecked Sendable {
 final class MockHTMLParser: HTMLParserProtocol, @unchecked Sendable {
     var metadataToReturn: LinkMetadata?
     
-    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata, shouldFetchSubresources: Bool) async -> LinkMetadata {
+    func parseHTMLMetadata(html: String, baseMetadata: LinkMetadata) async -> LinkMetadata {
         return metadataToReturn ?? baseMetadata
     }
 }

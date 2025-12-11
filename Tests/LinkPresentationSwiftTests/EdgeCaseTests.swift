@@ -41,7 +41,7 @@ struct EdgeCaseTests {
         let metadata = await parser.parseHTMLMetadata(html: emptyHTML, baseMetadata: baseMetadata, shouldFetchSubresources: false)
         
         #expect(metadata.title == nil)
-        #expect(metadata.imageProvider == nil)
+        #expect(metadata.imageURL == nil)
     }
     
     @Test("Very large HTML should not cause memory issues")
