@@ -14,8 +14,8 @@ struct LinkMetadataTests {
         let remoteVideoURL = URL(string: "https://example.com/video.mp4")
         
         let metadata = LinkMetadata(
-            url: url,
             originalURL: originalURL,
+            url: url,
             title: "Test Title",
             iconURL: iconURL,
             imageURL: imageURL,

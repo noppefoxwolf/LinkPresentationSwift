@@ -20,7 +20,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == "Test Page Title")
     }
@@ -39,7 +39,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == nil)
     }
@@ -59,7 +59,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == "Open Graph Title")
     }
@@ -79,7 +79,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == "Twitter Title")
     }
@@ -98,7 +98,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.imageURL != nil)
         #expect(metadata.imageURL == URL(string: "https://example.com/image.jpg"))
@@ -118,7 +118,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.imageURL != nil)
         #expect(metadata.imageURL == URL(string: "https://example.com/twitter-image.png"))
@@ -141,7 +141,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == "Complete Example")
         #expect(metadata.imageURL != nil)
@@ -161,7 +161,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         #expect(metadata.title == nil)
         #expect(metadata.imageURL == nil)
@@ -177,7 +177,7 @@ struct HTMLParserTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: html, baseMetadata: baseMetadata)
         
         // Should still parse the Open Graph title
         #expect(metadata.title == "Better Title")

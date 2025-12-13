@@ -38,7 +38,7 @@ struct EdgeCaseTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: emptyHTML, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: emptyHTML, baseMetadata: baseMetadata)
         
         #expect(metadata.title == nil)
         #expect(metadata.imageURL == nil)
@@ -65,7 +65,7 @@ struct EdgeCaseTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: largeHTML, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: largeHTML, baseMetadata: baseMetadata)
         
         #expect(metadata.title == "Large OG Title")
     }
@@ -89,7 +89,7 @@ struct EdgeCaseTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: malformedHTML, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: malformedHTML, baseMetadata: baseMetadata)
         
         // Should still extract valid metadata
         #expect(metadata.title == "Valid Title")
@@ -111,7 +111,7 @@ struct EdgeCaseTests {
         var baseMetadata = LinkMetadata()
         baseMetadata.originalURL = URL(string: "https://example.com")
         
-        let metadata = await parser.parseHTMLMetadata(html: unicodeHTML, baseMetadata: baseMetadata, shouldFetchSubresources: false)
+        let metadata = await parser.parseHTMLMetadata(html: unicodeHTML, baseMetadata: baseMetadata)
         
         #expect(metadata.title?.contains("🌟") == true)
         #expect(metadata.title?.contains("&quot;") == true) // HTML entities should be preserved

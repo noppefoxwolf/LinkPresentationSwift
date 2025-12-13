@@ -22,8 +22,7 @@ struct ShouldFetchSubresourcesTests {
         mockFetcher.htmlToReturn = htmlWithImage
         mockFetcher.urlToReturn = URL(string: "https://example.com")
         
-        var provider = MetadataProvider(fetcher: mockFetcher, parser: parser)
-        provider.shouldFetchSubresources = true
+        let provider = MetadataProvider(fetcher: mockFetcher, parser: parser)
         
         let metadata = try await provider.metadata(for: URL(string: "https://example.com")!)
         
@@ -48,8 +47,7 @@ struct ShouldFetchSubresourcesTests {
         mockFetcher.htmlToReturn = htmlWithImage
         mockFetcher.urlToReturn = URL(string: "https://example.com")
         
-        var provider = MetadataProvider(fetcher: mockFetcher, parser: parser)
-        provider.shouldFetchSubresources = false
+        let provider = MetadataProvider(fetcher: mockFetcher, parser: parser)
         
         let metadata = try await provider.metadata(for: URL(string: "https://example.com")!)
         

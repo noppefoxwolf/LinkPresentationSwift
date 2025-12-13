@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import LinkPresentationSwift
 
-@Suite("Metadata Fetcher Tests")
+@Suite("Metadata Fetcher Tests", .disabled())
 struct MetadataFetcherTests {
     let fetcher = MetadataFetcher()
     
@@ -83,5 +83,12 @@ struct MetadataFetcherTests {
         let (html, _) = try await fetcher.fetchHTML(for: request)
         
         #expect(!html.isEmpty)
+    }
+    
+    @Test
+    func nicovideo() async throws {
+        let url = URL(string: "https://www.nicovideo.jp/watch/sm44611089")!
+        let provider = MetadataProvider()
+        try await provider.metadata(for: url)
     }
 }

@@ -119,7 +119,6 @@ struct MetadataProviderTests {
         let provider = MetadataProvider()
         
         #expect(provider.timeout == 30)
-        #expect(provider.shouldFetchSubresources == true)
     }
     
     @Test("Timeout property can be changed")
@@ -128,13 +127,5 @@ struct MetadataProviderTests {
         
         provider.timeout = 60
         #expect(provider.timeout == 60)
-    }
-    
-    @Test("shouldFetchSubresources property can be changed")
-    func shouldFetchSubresourcesProperty() async throws {
-        var provider = MetadataProvider()
-        
-        provider.shouldFetchSubresources = false
-        #expect(provider.shouldFetchSubresources == false)
     }
 }
