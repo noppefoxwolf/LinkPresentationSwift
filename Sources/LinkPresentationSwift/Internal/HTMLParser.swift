@@ -61,19 +61,22 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
     private func extractMetaTags(from html: String, into metadata: inout LinkMetadata) async {
         // Support any attribute order by first grabbing the entire tag,
         // then parsing attributes individually.
-        let metaRegex = /<meta\b[^>]*>/
+        let metaTagRegex = /<meta\b[^>]*>/
 
-        for match in html.matches(of: metaRegex) {
+        for match in html.matches(of: metaTagRegex) {
             let tag = String(match.0)
             let attributes = parseAttributes(from: tag)
             guard let metaTag = MetaTag(attributes: attributes) else { continue }
             await processMetaTag(metaTag, into: &metadata)
+
+            // Short-circuit once the key meta fields are filled.
+            if metadata.isMetaSatisfied { break }
         }
 
         // Extract link tags for favicon/icon (attribute order agnostic)
-        let linkRegex = /<link\b[^>]*>/
+        let linkTagRegex = /<link\b[^>]*>/
 
-        for match in html.matches(of: linkRegex) {
+        for match in html.matches(of: linkTagRegex) {
             let tag = String(match.0)
             let attributes = parseAttributes(from: tag)
 
@@ -90,6 +93,7 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
 
             if isIcon, let iconURL = URL(string: href) {
                 metadata.iconURL = iconURL
+                break
             }
         }
     }
@@ -209,8 +213,23 @@ private func parseAttributes(from tag: String) -> [String: String] {
     for match in tag.matches(of: attributeRegex) {
         let name = match.1.lowercased()
         let value = String(match.2)
-        attributes[name] = value
+        // Only keep attributes we might use to reduce allocations.
+        switch name {
+        case "property", "name", "content", "rel", "href":
+            attributes[name] = value
+        default:
+            continue
+        }
     }
 
     return attributes
+}
+
+// MARK: - Convenience
+
+private extension LinkMetadata {
+    /// Whether all meta-derived fields we care about have been filled.
+    var isMetaSatisfied: Bool {
+        imageURL != nil && title != nil && remoteVideoURL != nil
+    }
 }
