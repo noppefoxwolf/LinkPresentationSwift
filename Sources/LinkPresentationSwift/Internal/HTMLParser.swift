@@ -59,29 +59,37 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
     /// then applies type-safe processing for each metadata type.
     /// Downloads images if shouldFetchSubresources is enabled.
     private func extractMetaTags(from html: String, into metadata: inout LinkMetadata) async {
-        let metaRegex =
-            /<meta[^>]*(?:property=["'](?<property>[^"']*)["']|name=["'](?<name>[^"']*)["'])[^>]*content=["'](?<content>[^"']*)["'][^>]*>/
+        // Support any attribute order by first grabbing the entire tag,
+        // then parsing attributes individually.
+        let metaRegex = /<meta\b[^>]*>/
 
         for match in html.matches(of: metaRegex) {
-            guard let metaTag = MetaTag(match) else { continue }
+            let tag = String(match.0)
+            let attributes = parseAttributes(from: tag)
+            guard let metaTag = MetaTag(attributes: attributes) else { continue }
             await processMetaTag(metaTag, into: &metadata)
         }
 
-        // Extract link tags for favicon/icon
-        let linkRegex =
-            /<link[^>]*rel=["'](?<rel>[^"']*)["'][^>]*href=["'](?<href>[^"']*)["'][^>]*>/
+        // Extract link tags for favicon/icon (attribute order agnostic)
+        let linkRegex = /<link\b[^>]*>/
 
         for match in html.matches(of: linkRegex) {
-            let rel = String(match.output.rel)
-            let href = String(match.output.href)
+            let tag = String(match.0)
+            let attributes = parseAttributes(from: tag)
 
-            guard rel == "icon" || rel == "shortcut icon" || rel == "apple-touch-icon",
+            guard let relValue = attributes["rel"], let href = attributes["href"],
                 metadata.iconURL == nil
             else { continue }
 
-            if let iconURL = URL(string: href) {
+            let relTokens = relValue
+                .split(whereSeparator: { $0.isWhitespace })
+                .map { $0.lowercased() }
+
+            let isIcon = relTokens.contains("icon") || relTokens.contains("shortcut") ||
+                relTokens.contains("apple-touch-icon")
+
+            if isIcon, let iconURL = URL(string: href) {
                 metadata.iconURL = iconURL
-                break  // First icon wins
             }
         }
     }
@@ -136,19 +144,16 @@ private struct MetaTag {
     let type: MetaTagType
     let content: String
 
-    /// Initializes a MetaTag from a regex match result.
+    /// Initializes a MetaTag from parsed HTML attributes.
     ///
-    /// Determines the semantic type based on property/name attributes
-    /// and extracts the content value. Returns nil for unsupported tag types.
-    init?(
-        _ match: Regex<(Substring, property: Substring?, name: Substring?, content: Substring)>
-            .Match
-    ) {
-        let property = match.property?.lowercased() ?? ""
-        let name = match.name?.lowercased() ?? ""
-        let content = String(match.content)
+    /// Accepts property/name/content in any order to better support real-world HTML.
+    init?(attributes: [String: String]) {
+        let property = attributes["property"]?.lowercased() ?? ""
+        let name = attributes["name"]?.lowercased() ?? ""
 
-        guard let type = MetaTagType.from(property: property, name: name) else { return nil }
+        guard let content = attributes["content"],
+            let type = MetaTagType.from(property: property, name: name)
+        else { return nil }
 
         self.type = type
         self.content = content
@@ -189,4 +194,23 @@ private enum MetaTagType {
             return nil  // Unsupported meta tag type
         }
     }
+}
+
+// MARK: - Attribute Parsing
+
+/// Parses key/value HTML attributes from a tag string.
+///
+/// Designed to be attribute-order agnostic and tolerant of both single and
+/// double quotes.
+private func parseAttributes(from tag: String) -> [String: String] {
+    let attributeRegex = /([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*["']([^"']*)["']/
+    var attributes: [String: String] = [:]
+
+    for match in tag.matches(of: attributeRegex) {
+        let name = match.1.lowercased()
+        let value = String(match.2)
+        attributes[name] = value
+    }
+
+    return attributes
 }
