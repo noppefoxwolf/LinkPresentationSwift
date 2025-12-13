@@ -44,7 +44,10 @@ public struct MetadataProvider: Sendable {
 
         // Validate that the request has a URL
         guard let originalURL = request.url else {
-            throw Error(errorCode: .metadataFetchFailed)
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "URLRequest is missing a URL."
+            )
         }
 
         // Validate URL before processing

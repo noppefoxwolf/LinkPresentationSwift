@@ -133,9 +133,9 @@ struct MetadataProviderTests {
         #expect(provider.timeout == 60)
     }
     
-    @Test(.disabled())
+    @Test//(.disabled())
     func removeURL() async throws {
-        let url = URL(string: "https://www.nicovideo.jp/watch/sm44611089")!
+        let url = URL(string: "https://rkgk.10rino.net/tglg/?postid=34")!
         let provider = MetadataProvider()
         let metadata = try await provider.metadata(for: url)
         #expect(metadata.imageURL != nil)

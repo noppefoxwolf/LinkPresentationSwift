@@ -24,23 +24,43 @@ internal final class MetadataFetcher: MetadataFetcherProtocol, Sendable {
         let session = URLSession.shared
 
         // Execute network request with provided URLRequest configuration
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Network request failed",
+                underlyingError: error
+            )
+        }
 
         // Validate HTTP response status (200-299 range)
         guard let httpResponse = response as? HTTPURLResponse,
             200...299 ~= httpResponse.statusCode
         else {
-            throw Error(errorCode: .metadataFetchFailed)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Unexpected HTTP status: \(status)"
+            )
         }
 
         // Convert response data to UTF-8 string
         guard let html = String(data: data, encoding: .utf8) else {
-            throw Error(errorCode: .metadataFetchFailed)
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Response was not valid UTF-8"
+            )
         }
 
         // Determine final URL after potential redirects, fallback to original
         guard let finalURL = response.url ?? request.url else {
-            throw Error(errorCode: .metadataFetchFailed)
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Response did not contain a final URL"
+            )
         }
 
         return (html: html, finalURL: finalURL)

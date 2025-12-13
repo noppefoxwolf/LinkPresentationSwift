@@ -8,7 +8,10 @@ extension Error {
     /// Provides semantic meaning to prevent confusion with generic fetch failures.
     /// Should be used when startFetchingMetadata is called multiple times on the same provider.
     public static func multipleCalls() -> LinkPresentationSwift.Error {
-        LinkPresentationSwift.Error(errorCode: .metadataFetchFailed)
+        LinkPresentationSwift.Error(
+            errorCode: .metadataFetchFailed,
+            reason: "metadata(for:) was called multiple times on the same provider instance."
+        )
     }
 
     /// Creates a domain-specific error for network timeout conditions.
@@ -22,7 +25,10 @@ extension Error {
     ///
     /// Used when URLs are malformed, use unsupported schemes, or are otherwise invalid.
     public static func invalidURL() -> LinkPresentationSwift.Error {
-        LinkPresentationSwift.Error(errorCode: .metadataFetchFailed)
+        LinkPresentationSwift.Error(
+            errorCode: .metadataFetchFailed,
+            reason: "The provided URL is invalid or unsupported."
+        )
     }
 }
 
@@ -45,10 +51,22 @@ extension Result where Failure == Swift.Error {
                 case .unsupportedURL, .badURL:
                     return .failure(.invalidURL())
                 default:
-                    return .failure(LinkPresentationSwift.Error(errorCode: .metadataFetchFailed))
+                    return .failure(
+                        LinkPresentationSwift.Error(
+                            errorCode: .metadataFetchFailed,
+                            reason: urlError.localizedDescription,
+                            underlyingError: urlError
+                        )
+                    )
                 }
             }
-            return .failure(LinkPresentationSwift.Error(errorCode: .metadataFetchFailed))
+            return .failure(
+                LinkPresentationSwift.Error(
+                    errorCode: .metadataFetchFailed,
+                    reason: error.localizedDescription,
+                    underlyingError: error
+                )
+            )
         }
     }
 }
