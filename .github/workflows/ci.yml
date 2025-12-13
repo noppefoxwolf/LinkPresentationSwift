@@ -22,4 +22,4 @@ permissions:
 jobs:
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.1
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.3
