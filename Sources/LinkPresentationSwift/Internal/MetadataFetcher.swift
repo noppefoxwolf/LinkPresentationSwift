@@ -117,14 +117,7 @@ internal final class MetadataFetcher: MetadataFetcherProtocol, Sendable {
             return true
         }
 
-        return lowercasedHTML.contains("og:title")
-            && lowercasedHTML.contains("og:image")
-            && (
-                lowercasedHTML.contains("og:video")
-                    || lowercasedHTML.contains("twitter:player")
-                    || lowercasedHTML.contains("og:video:url")
-                    || lowercasedHTML.contains("og:video:secure_url")
-                    || lowercasedHTML.contains("twitter:player:stream")
-            )
+        return MetadataTag.requiredEarlyStopTags.allSatisfy { lowercasedHTML.contains($0) }
+            && MetadataTag.videoEarlyStopTags.contains { lowercasedHTML.contains($0) }
     }
 }

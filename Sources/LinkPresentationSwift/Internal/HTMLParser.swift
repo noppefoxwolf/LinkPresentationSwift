@@ -145,7 +145,7 @@ internal final class HTMLParser: HTMLParserProtocol, Sendable {
 /// Converts raw regex match data into a strongly-typed object that can be
 /// processed using Swift's pattern matching and type system.
 private struct MetaTag {
-    let type: MetaTagType
+    let type: MetadataTag
     let content: String
 
     /// Initializes a MetaTag from parsed HTML attributes.
@@ -156,47 +156,11 @@ private struct MetaTag {
         let name = attributes["name"]?.lowercased() ?? ""
 
         guard let content = attributes["content"],
-            let type = MetaTagType.from(property: property, name: name)
+            let type = MetadataTag.from(property: property, name: name)
         else { return nil }
 
         self.type = type
         self.content = content
-    }
-}
-
-/// Semantic classification of meta tag types for structured processing.
-///
-/// Enables type-safe handling of different metadata categories using
-/// Swift's enum pattern matching capabilities.
-private enum MetaTagType {
-    case title  // Page title (og:title, twitter:title)
-    case image  // Featured image (og:image, twitter:image)
-    case description  // Page description (og:description, description, twitter:description)
-    case video  // Video content (og:video, twitter:player)
-    case remoteVideoURL  // Direct video URL (og:video:url, twitter:player:stream)
-    case icon  // Page icon (og:icon, apple-touch-icon, icon)
-
-    /// Maps meta tag property/name attributes to semantic types.
-    ///
-    /// Prioritizes Open Graph and Twitter Card standards while supporting
-    /// fallback to standard HTML meta tags.
-    static func from(property: String, name: String) -> MetaTagType? {
-        switch (property, name) {
-        case ("og:title", _), (_, "twitter:title"):
-            return .title
-        case ("og:image", _), (_, "twitter:image"):
-            return .image
-        case ("og:description", _), (_, "description"), (_, "twitter:description"):
-            return .description
-        case ("og:video", _), (_, "twitter:player"):
-            return .video
-        case ("og:video:url", _), ("og:video:secure_url", _), (_, "twitter:player:stream"):
-            return .remoteVideoURL
-        case ("og:icon", _), (_, "apple-touch-icon"):
-            return .icon
-        default:
-            return nil  // Unsupported meta tag type
-        }
     }
 }
 
