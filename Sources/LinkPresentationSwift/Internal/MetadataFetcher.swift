@@ -15,19 +15,30 @@ internal protocol MetadataFetcherProtocol: Sendable {
 /// Handles network requests, HTTP status validation, content encoding,
 /// and provides proper error propagation for metadata fetching operations.
 internal final class MetadataFetcher: MetadataFetcherProtocol, Sendable {
+    private let session: URLSession
+    private let maxHTMLBytes: Int
+    private let scanInterval: Int
+
+    init(
+        session: URLSession = .shared,
+        maxHTMLBytes: Int = 128 * 1024,
+        scanInterval: Int = 2 * 1024
+    ) {
+        self.session = session
+        self.maxHTMLBytes = maxHTMLBytes
+        self.scanInterval = scanInterval
+    }
 
     /// Fetches HTML content using URLSession with comprehensive validation.
     ///
     /// Performs network request, validates HTTP status codes, ensures UTF-8 encoding,
     /// and handles URL redirects properly. Throws descriptive errors for all failure cases.
     func fetchHTML(for request: URLRequest) async throws -> (html: String, finalURL: URL) {
-        let session = URLSession.shared
-
-        // Execute network request with provided URLRequest configuration
-        let data: Data
         let response: URLResponse
+        let bytes: URLSession.AsyncBytes
+
         do {
-            (data, response) = try await session.data(for: request)
+            (bytes, response) = try await session.bytes(for: request)
         } catch {
             throw Error(
                 errorCode: .metadataFetchFailed,
@@ -47,14 +58,6 @@ internal final class MetadataFetcher: MetadataFetcherProtocol, Sendable {
             )
         }
 
-        // Convert response data to UTF-8 string
-        guard let html = String(data: data, encoding: .utf8) else {
-            throw Error(
-                errorCode: .metadataFetchFailed,
-                reason: "Response was not valid UTF-8"
-            )
-        }
-
         // Determine final URL after potential redirects, fallback to original
         guard let finalURL = response.url ?? request.url else {
             throw Error(
@@ -63,6 +66,58 @@ internal final class MetadataFetcher: MetadataFetcherProtocol, Sendable {
             )
         }
 
+        let data: Data
+        do {
+            data = try await collectHTMLPrefix(from: bytes)
+        } catch {
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Network request failed",
+                underlyingError: error
+            )
+        }
+
+        guard let html = String(data: data, encoding: .utf8) else {
+            throw Error(
+                errorCode: .metadataFetchFailed,
+                reason: "Response was not valid UTF-8"
+            )
+        }
+
         return (html: html, finalURL: finalURL)
+    }
+
+    private func collectHTMLPrefix(from bytes: URLSession.AsyncBytes) async throws -> Data {
+        var data = Data()
+        data.reserveCapacity(min(maxHTMLBytes, scanInterval * 2))
+
+        for try await byte in bytes {
+            data.append(byte)
+
+            if data.count >= maxHTMLBytes {
+                break
+            }
+
+            guard data.count % scanInterval == 0 else { continue }
+            if shouldStopReading(data: data) {
+                break
+            }
+        }
+
+        return data
+    }
+
+    private func shouldStopReading(data: Data) -> Bool {
+        guard let html = String(data: data, encoding: .utf8) else {
+            return false
+        }
+
+        let lowercasedHTML = html.lowercased()
+        if lowercasedHTML.contains("</head>") {
+            return true
+        }
+
+        return MetadataTag.requiredEarlyStopTags.allSatisfy { lowercasedHTML.contains($0) }
+            && MetadataTag.videoEarlyStopTags.contains { lowercasedHTML.contains($0) }
     }
 }

@@ -133,7 +133,7 @@ struct MetadataProviderTests {
         #expect(provider.timeout == 60)
     }
     
-    @Test//(.disabled())
+    @Test(.disabled("Depends on an external website and DNS resolution."))
     func removeURL() async throws {
         let url = URL(string: "https://rkgk.10rino.net/tglg/?postid=34")!
         let provider = MetadataProvider()
